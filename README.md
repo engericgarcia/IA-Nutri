@@ -5,7 +5,7 @@ PWA para quem está de dieta: tire uma foto do prato e a IA estima **calorias, p
 - Visão computacional com **Claude (Anthropic)**, orientada como nutricionista esportivo
 - Valores de referência da **Tabela TACO / TBCA** (alimentos brasileiros) e USDA
 - Considera óleo e molhos "escondidos" e mostra uma faixa provável de kcal
-- Meta diária, total do dia e histórico de refeições (salvo no próprio celular)
+- Histórico por **dia, semana e mês**, com gráfico de calorias vs. meta, médias e dias dentro da meta (salvo no próprio celular)
 - Instalável na tela inicial (Android e iPhone)
 
 ## Rodar localmente

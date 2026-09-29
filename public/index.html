@@ -45,9 +45,20 @@
     <section id="result" class="card result" hidden></section>
 
     <section class="card history">
-      <h2>Refeições de hoje</h2>
-      <ul id="historyList"></ul>
-      <p id="historyEmpty" class="muted">Nenhuma refeição registrada hoje.</p>
+      <div class="history-head">
+        <h2>Histórico</h2>
+        <div class="tabs" role="tablist">
+          <button role="tab" data-view="day" aria-selected="true">Dia</button>
+          <button role="tab" data-view="week" aria-selected="false">Semana</button>
+          <button role="tab" data-view="month" aria-selected="false">Mês</button>
+        </div>
+      </div>
+      <div class="period-nav">
+        <button id="prevPeriod" class="ghost icon" aria-label="Período anterior">‹</button>
+        <span id="periodLabel"></span>
+        <button id="nextPeriod" class="ghost icon" aria-label="Próximo período">›</button>
+      </div>
+      <div id="historyBody"></div>
     </section>
 
     <p class="muted disclaimer">Valores estimados por IA a partir da foto (base TACO/TBCA/USDA). Use como referência, não como substituto de nutricionista.</p>
