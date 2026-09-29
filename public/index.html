@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>IA Nutri</title>
+  <meta name="description" content="Tire uma foto do prato e descubra as calorias" />
+  <meta name="theme-color" content="#16a34a" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="IA Nutri" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>🥗 IA Nutri</h1>
+    <button id="goalBtn" class="ghost" aria-label="Definir meta diária">Meta</button>
+  </header>
+
+  <main>
+    <section class="card today">
+      <div class="today-head">
+        <span>Hoje</span>
+        <strong><span id="todayKcal">0</span> / <span id="goalKcal">2000</span> kcal</strong>
+      </div>
+      <div class="bar"><div id="todayBar"></div></div>
+      <div class="macros-mini" id="todayMacros"></div>
+    </section>
+
+    <section class="card capture">
+      <label class="photo-drop" id="photoDrop">
+        <input id="photoInput" type="file" accept="image/*" capture="environment" hidden />
+        <img id="preview" alt="" hidden />
+        <span id="photoHint">📷 Tirar foto do prato</span>
+      </label>
+      <button id="galleryBtn" class="ghost small">ou escolher da galeria</button>
+      <input id="galleryInput" type="file" accept="image/*" hidden />
+      <textarea id="desc" rows="2" placeholder="Opcional: detalhes (ex: 150g de frango, arroz integral, sem óleo)"></textarea>
+      <button id="analyzeBtn" class="primary" disabled>Calcular calorias</button>
+    </section>
+
+    <section id="result" class="card result" hidden></section>
+
+    <section class="card history">
+      <h2>Refeições de hoje</h2>
+      <ul id="historyList"></ul>
+      <p id="historyEmpty" class="muted">Nenhuma refeição registrada hoje.</p>
+    </section>
+
+    <p class="muted disclaimer">Valores estimados por IA a partir da foto (base TACO/TBCA/USDA). Use como referência, não como substituto de nutricionista.</p>
+  </main>
+
+  <dialog id="goalDialog">
+    <form method="dialog">
+      <label>Meta diária (kcal)<input id="goalInput" type="number" min="800" max="6000" step="50" /></label>
+      <menu><button value="cancel" class="ghost">Cancelar</button><button value="ok" class="primary">Salvar</button></menu>
+    </form>
+  </dialog>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
