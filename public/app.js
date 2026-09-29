@@ -14,7 +14,39 @@ function save(key, value) {
 }
 const todayKey = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD local
 const getMeals = () => load(STORE_KEY, []);
-const getGoal = () => load(GOAL_KEY, 2000);
+const PROFILE_KEY = "ianutri.profile";
+const getProfile = () => load(PROFILE_KEY, null);
+const nf = (n) => Math.round(n).toLocaleString("pt-BR");
+
+// ---------- corpo: IMC, TMB (Mifflin-St Jeor), gasto diário e meta ----------
+function calcBody(p) {
+  if (!p?.peso || !p?.altura || !p?.idade) return null;
+  const imc = p.peso / (p.altura / 100) ** 2;
+  const imcCat =
+    imc < 18.5 ? "Abaixo do peso" : imc < 25 ? "Peso normal" : imc < 30 ? "Sobrepeso"
+    : imc < 35 ? "Obesidade grau I" : imc < 40 ? "Obesidade grau II" : "Obesidade grau III";
+  const tmb = 10 * p.peso + 6.25 * p.altura - 5 * p.idade + (p.sexo === "f" ? -161 : 5);
+  const gasto = tmb * (Number(p.atividade) || 1.55);
+  const fator = { perder: 0.8, manter: 1, ganhar: 1.1 }[p.objetivo] ?? 1;
+  let recomendada = Math.round((gasto * fator) / 50) * 50;
+  // não recomenda abaixo do mínimo seguro sem acompanhamento profissional
+  const piso = p.sexo === "f" ? 1200 : 1500;
+  if (recomendada < piso) recomendada = Math.min(piso, Math.round(gasto / 50) * 50);
+  return { imc, imcCat, tmb: Math.round(tmb), gasto: Math.round(gasto), recomendada, meta: Number(p.metaManual) || recomendada };
+}
+
+// meta = quanto comer; gasto = manutenção (abaixo dele = déficit, acima = superávit)
+function targets() {
+  const body = calcBody(getProfile());
+  if (body) return { meta: body.meta, gasto: body.gasto, body };
+  const g = load(GOAL_KEY, 2000);
+  return { meta: g, gasto: g, body: null };
+}
+
+function balance(kcal, gasto) {
+  const d = kcal - gasto;
+  return d > 0 ? { cls: "surplus", label: "Superávit", v: d } : { cls: "deficit", label: "Déficit", v: -d };
+}
 
 // ---------- imagem: redimensiona para economizar tokens ----------
 function resizeImage(file, maxSide = 1568, quality = 0.85) {
@@ -158,13 +190,30 @@ function sumMeals(meals) {
 }
 
 function renderToday() {
-  const goal = getGoal();
+  const { meta, gasto, body } = targets();
   const sum = sumMeals(getMeals().filter((m) => m.day === todayKey()));
-  $("todayKcal").textContent = sum.kcal;
-  $("goalKcal").textContent = goal;
-  $("todayBar").style.width = Math.min(100, (sum.kcal / goal) * 100) + "%";
-  $("todayBar").parentElement.classList.toggle("over", sum.kcal > goal);
-  $("todayMacros").innerHTML = `<span>P ${sum.p}g</span><span>C ${sum.c}g</span><span>G ${sum.f}g</span><span>Restam ${Math.max(0, goal - sum.kcal)} kcal</span>`;
+  const bal = balance(sum.kcal, gasto);
+  $("todayKcal").textContent = nf(sum.kcal);
+  $("goalKcal").textContent = nf(meta);
+  $("todayBar").style.width = Math.min(100, (sum.kcal / meta) * 100) + "%";
+  $("todayBar").parentElement.classList.toggle("over", bal.cls === "surplus");
+  $("todayMacros").innerHTML = `<span>P ${sum.p}g</span><span>C ${sum.c}g</span><span>G ${sum.f}g</span><span>Restam ${nf(Math.max(0, meta - sum.kcal))} kcal</span>`;
+
+  if (!body) {
+    $("balanceBox").innerHTML = "";
+    $("bodyBox").innerHTML = `<div class="setup" style="grid-column:1/-1"><p class="muted" style="margin:0 0 8px">Preencha peso, altura e idade para calcular seu IMC, seu gasto diário e a meta recomendada.</p><button class="primary" id="setupBtn">Preencher meu perfil</button></div>`;
+    $("setupBtn").onclick = openProfile;
+  } else {
+    $("balanceBox").innerHTML = `
+      <div class="balance ${bal.cls}">
+        <span class="ico">${bal.cls === "deficit" ? "▼" : "▲"}</span>
+        <div><b>${bal.label} de ${nf(bal.v)} kcal</b><small>em relação ao seu gasto estimado de ${nf(gasto)} kcal/dia</small></div>
+      </div>`;
+    $("bodyBox").innerHTML = `
+      <div class="stat"><b>${body.imc.toFixed(1).replace(".", ",")}</b><span>IMC · ${body.imcCat}</span></div>
+      <div class="stat"><b>${nf(body.gasto)}</b><span>gasto kcal/dia</span></div>
+      <div class="stat"><b>${nf(body.recomendada)}</b><span>meta recomendada</span></div>`;
+  }
   renderHistory();
 }
 
@@ -216,12 +265,12 @@ function renderDayView() {
 
   const meals = getMeals().filter((m) => m.day === key).sort((a, b) => b.at - a.at);
   const sum = sumMeals(meals);
-  const goal = getGoal();
+  const bal = balance(sum.kcal, targets().gasto);
   $("historyBody").innerHTML = !meals.length
     ? `<p class="muted">Nenhuma refeição registrada ${today ? "hoje" : "neste dia"}.</p>`
     : `
     <div class="stats">
-      <div class="stat"><b>${sum.kcal} kcal</b><span>${sum.kcal > goal ? `${sum.kcal - goal} acima da meta` : `${goal - sum.kcal} abaixo da meta`}</span></div>
+      <div class="stat"><b>${nf(sum.kcal)} kcal</b><span class="${bal.cls === "deficit" ? "pos" : "neg"}">${bal.label} de ${nf(bal.v)} kcal</span></div>
       <div class="stat"><b>${meals.length}</b><span>refeições</span></div>
     </div>
     <p class="muted" style="margin:0 0 6px">Proteína ${sum.p}g · Carbo ${sum.c}g · Gordura ${sum.f}g</p>
@@ -241,7 +290,7 @@ function renderRangeView() {
     ? `${fmt(first, { day: "numeric", month: "short" })} – ${fmt(last, { day: "numeric", month: "short" })}`
     : fmt(first, { month: "long", year: "numeric" });
 
-  const goal = getGoal();
+  const { meta, gasto } = targets();
   const byDay = new Map();
   for (const m of getMeals()) {
     if (m.day < dayKey(first) || m.day > dayKey(last)) continue;
@@ -260,29 +309,32 @@ function renderRangeView() {
   }
 
   const avg = (k) => Math.round(logged.reduce((a, r) => a + r[k], 0) / logged.length);
-  const onTarget = logged.filter((r) => r.kcal <= goal).length;
-  const total = logged.reduce((a, r) => a + r.kcal, 0);
+  const deficitDays = logged.filter((r) => r.kcal <= gasto).length;
+  const saldo = logged.reduce((a, r) => a + (r.kcal - gasto), 0); // negativo = déficit acumulado
+  const avgBal = balance(avg("kcal"), gasto);
+  const kgGordura = (Math.abs(saldo) / 7700).toFixed(1).replace(".", ","); // ~7.700 kcal por kg de gordura
 
   $("historyBody").innerHTML = `
     <div class="stats">
-      <div class="stat"><b>${avg("kcal")} kcal</b><span>média por dia registrado</span></div>
-      <div class="stat"><b>${onTarget}/${logged.length}</b><span>dias dentro da meta</span></div>
-      <div class="stat"><b>${avg("p")}g</b><span>proteína média/dia</span></div>
-      <div class="stat"><b>${total.toLocaleString("pt-BR")}</b><span>kcal no total</span></div>
+      <div class="stat"><b>${nf(avg("kcal"))} kcal</b><span>média por dia · P ${avg("p")}g</span></div>
+      <div class="stat"><b>${deficitDays}/${logged.length}</b><span>dias em déficit</span></div>
+      <div class="stat"><b class="${avgBal.cls === "deficit" ? "pos" : "neg"}">${avgBal.cls === "deficit" ? "−" : "+"}${nf(avgBal.v)} kcal</b><span>${avgBal.label.toLowerCase()} médio/dia</span></div>
+      <div class="stat"><b class="${saldo <= 0 ? "pos" : "neg"}">${saldo <= 0 ? "−" : "+"}${kgGordura} kg</b><span>${saldo <= 0 ? "gordura queimada (estim.)" : "gordura ganha (estim.)"}</span></div>
     </div>
-    ${chartSvg(rows, goal)}
+    ${chartSvg(rows, meta, gasto)}
     <ul class="day-rows">${logged.slice().reverse().map((r) => `
       <li data-day="${r.key}">
         <span class="d">${fmt(r.date, { weekday: "short", day: "numeric", month: "short" })}</span>
-        <span class="v ${r.kcal > goal ? "over" : ""}">${r.kcal} kcal <small>· ${r.n} ref. ›</small></span>
+        <span class="v ${balance(r.kcal, gasto).cls}">${nf(r.kcal)} kcal <small>· ${balance(r.kcal, gasto).cls === "deficit" ? "−" : "+"}${nf(balance(r.kcal, gasto).v)} ›</small></span>
       </li>`).join("")}</ul>`;
-  bindChart(rows, goal);
+  bindChart(rows, gasto);
 }
 
-// Gráfico de barras: kcal por dia, linha tracejada = meta
-function chartSvg(rows, goal) {
+// Gráfico de barras: kcal por dia; verde = déficit, vermelho = superávit
+// linha contínua = gasto diário (manutenção), tracejada = meta
+function chartSvg(rows, meta, gasto) {
   const W = 340, H = 170, top = 14, bottom = 20, left = 4, right = 4;
-  const max = Math.max(goal * 1.15, ...rows.map((r) => r.kcal));
+  const max = Math.max(gasto * 1.15, meta * 1.15, ...rows.map((r) => r.kcal));
   const plotH = H - top - bottom;
   const slot = (W - left - right) / rows.length;
   const gap = 2;
@@ -301,7 +353,7 @@ function chartSvg(rows, goal) {
     const showLbl = hist.view === "week" || (r.date.getDate() === 1 || r.date.getDate() % labelEvery === 0);
     return `
       <rect class="hit" data-i="${i}" x="${left + slot * i}" y="${top}" width="${slot}" height="${plotH + bottom}"></rect>
-      <path class="bar ${r.kcal > goal ? "over" : ""}" d="${path}"></path>
+      <path class="bar ${r.kcal > gasto ? "surplus" : ""}" d="${path}"></path>
       ${r.key === today ? `<circle class="today-dot" cx="${cx}" cy="${H - 3}" r="2"></circle>` : ""}
       ${showLbl ? `<text class="axis" x="${cx}" y="${H - 8}" text-anchor="middle">${lbl}</text>` : ""}`;
   }).join("");
@@ -311,14 +363,15 @@ function chartSvg(rows, goal) {
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Calorias por dia">
         <line class="grid" x1="0" x2="${W}" y1="${top + plotH}" y2="${top + plotH}"></line>
         ${bars}
-        <line class="goal" x1="0" x2="${W}" y1="${y(goal)}" y2="${y(goal)}"></line>
+        ${gasto !== meta ? `<line class="maint" x1="0" x2="${W}" y1="${y(gasto)}" y2="${y(gasto)}"></line>` : ""}
+        <line class="goal" x1="0" x2="${W}" y1="${y(meta)}" y2="${y(meta)}"></line>
       </svg>
       <div class="tooltip" hidden></div>
-      <div class="legend"><span><i style="background:var(--green)"></i>dentro da meta</span><span><i style="background:var(--amber)"></i>acima da meta</span><span><i class="dash"></i>meta ${goal} kcal</span></div>
+      <div class="legend"><span><i style="background:var(--green)"></i>déficit</span><span><i style="background:var(--red)"></i>superávit</span><span><i class="dash"></i>meta ${nf(meta)}</span>${gasto !== meta ? `<span><i class="line"></i>gasto ${nf(gasto)}</span>` : ""}</div>
     </div>`;
 }
 
-function bindChart(rows, goal) {
+function bindChart(rows, gasto) {
   const wrap = $("histChart");
   const svg = wrap.querySelector("svg");
   const tip = wrap.querySelector(".tooltip");
@@ -328,7 +381,7 @@ function bindChart(rows, goal) {
     el.classList.add("active");
     const box = el.getBoundingClientRect(), base = wrap.getBoundingClientRect();
     tip.innerHTML = `<b>${fmt(r.date, { weekday: "short", day: "numeric", month: "short" })}</b><br>` +
-      (r.n ? `${r.kcal} kcal ${r.kcal > goal ? "· acima da meta" : ""}<br>P${r.p} C${r.c} G${r.f}` : "sem registro");
+      (r.n ? `${nf(r.kcal)} kcal · ${balance(r.kcal, gasto).label.toLowerCase()} ${nf(balance(r.kcal, gasto).v)}<br>P${r.p} C${r.c} G${r.f}` : "sem registro");
     tip.hidden = false;
     const x = Math.min(Math.max(box.left + box.width / 2 - base.left, 60), base.width - 60);
     tip.style.left = x + "px";
@@ -367,15 +420,40 @@ document.querySelector(".tabs").addEventListener("click", (e) => {
 $("prevPeriod").onclick = () => shiftPeriod(-1);
 $("nextPeriod").onclick = () => shiftPeriod(1);
 
-// ---------- meta ----------
-$("goalBtn").onclick = () => {
-  $("goalInput").value = getGoal();
-  $("goalDialog").showModal();
-};
-$("goalDialog").addEventListener("close", () => {
-  if ($("goalDialog").returnValue !== "ok") return;
-  const v = parseInt($("goalInput").value, 10);
-  if (v >= 800 && v <= 6000) save(GOAL_KEY, v);
+// ---------- perfil ----------
+const form = $("profileForm");
+
+function readForm() {
+  const f = new FormData(form);
+  const num = (k) => parseFloat(String(f.get(k) || "").replace(",", ".")) || null;
+  return {
+    sexo: f.get("sexo"), idade: num("idade"), peso: num("peso"), altura: num("altura"),
+    atividade: num("atividade"), objetivo: f.get("objetivo"), metaManual: num("metaManual"),
+  };
+}
+
+function renderPreview() {
+  const b = calcBody(readForm());
+  $("profilePreview").innerHTML = !b ? "" : `
+    <div class="stat"><b>${b.imc.toFixed(1).replace(".", ",")}</b><span>IMC · ${b.imcCat}</span></div>
+    <div class="stat"><b>${nf(b.tmb)} kcal</b><span>TMB (metabolismo basal)</span></div>
+    <div class="stat"><b>${nf(b.gasto)} kcal</b><span>gasto diário (manutenção)</span></div>
+    <div class="stat"><b class="pos">${nf(b.recomendada)} kcal</b><span>meta recomendada/dia</span></div>`;
+}
+
+function openProfile() {
+  const p = getProfile() || {};
+  for (const [k, v] of Object.entries(p)) if (form.elements[k] && v != null) form.elements[k].value = v;
+  renderPreview();
+  $("profileDialog").showModal();
+}
+
+form.addEventListener("input", renderPreview);
+$("profileBtn").onclick = openProfile;
+$("profileDialog").addEventListener("close", () => {
+  if ($("profileDialog").returnValue !== "ok") return;
+  const p = readForm();
+  if (calcBody(p)) save(PROFILE_KEY, p);
   renderToday();
 });
 

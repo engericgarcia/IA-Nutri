@@ -17,7 +17,7 @@
 <body>
   <header class="top">
     <h1>🥗 IA Nutri</h1>
-    <button id="goalBtn" class="ghost" aria-label="Definir meta diária">Meta</button>
+    <button id="profileBtn" class="ghost" aria-label="Meu perfil">👤 Perfil</button>
   </header>
 
   <main>
@@ -28,6 +28,8 @@
       </div>
       <div class="bar"><div id="todayBar"></div></div>
       <div class="macros-mini" id="todayMacros"></div>
+      <div id="balanceBox"></div>
+      <div id="bodyBox" class="body-box"></div>
     </section>
 
     <section class="card capture">
@@ -64,10 +66,41 @@
     <p class="muted disclaimer">Valores estimados por IA a partir da foto (base TACO/TBCA/USDA). Use como referência, não como substituto de nutricionista.</p>
   </main>
 
-  <dialog id="goalDialog">
-    <form method="dialog">
-      <label>Meta diária (kcal)<input id="goalInput" type="number" min="800" max="6000" step="50" /></label>
-      <menu><button value="cancel" class="ghost">Cancelar</button><button value="ok" class="primary">Salvar</button></menu>
+  <dialog id="profileDialog">
+    <form method="dialog" id="profileForm">
+      <h2>Meu perfil</h2>
+      <div class="form-grid">
+        <label>Sexo
+          <select name="sexo" required>
+            <option value="m">Masculino</option>
+            <option value="f">Feminino</option>
+          </select>
+        </label>
+        <label>Idade<input name="idade" type="number" min="14" max="100" inputmode="numeric" placeholder="anos" required /></label>
+        <label>Peso (kg)<input name="peso" type="number" min="30" max="300" step="0.1" inputmode="decimal" placeholder="ex: 82,5" required /></label>
+        <label>Altura (cm)<input name="altura" type="number" min="120" max="230" inputmode="numeric" placeholder="ex: 175" required /></label>
+        <label class="full">Nível de atividade
+          <select name="atividade">
+            <option value="1.2">Sedentário (pouco ou nenhum exercício)</option>
+            <option value="1.375">Leve (treina 1–3x por semana)</option>
+            <option value="1.55" selected>Moderado (treina 3–5x por semana)</option>
+            <option value="1.725">Intenso (treina 6–7x por semana)</option>
+            <option value="1.9">Muito intenso (treino pesado + trabalho físico)</option>
+          </select>
+        </label>
+        <label class="full">Objetivo
+          <select name="objetivo">
+            <option value="perder" selected>Perder gordura (déficit de ~20%)</option>
+            <option value="manter">Manter o peso</option>
+            <option value="ganhar">Ganhar massa (superávit de ~10%)</option>
+          </select>
+        </label>
+        <label class="full">Meta diária personalizada (opcional)
+          <input name="metaManual" type="number" min="800" max="6000" step="50" inputmode="numeric" placeholder="deixe vazio para usar a recomendada" />
+        </label>
+      </div>
+      <div id="profilePreview" class="profile-preview"></div>
+      <menu><button value="cancel" formnovalidate class="ghost">Cancelar</button><button value="ok" class="primary">Salvar</button></menu>
     </form>
   </dialog>
 

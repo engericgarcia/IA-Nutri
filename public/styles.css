@@ -8,6 +8,7 @@
   --green-soft: #dcfce7;
   --amber: #d97706;
   --red: #dc2626;
+  --red-soft: #fee2e2;
   --prot: #2563eb;
   --carb: #d97706;
   --fat: #db2777;
@@ -21,6 +22,8 @@
     --muted: #93a398;
     --line: #26332a;
     --green-soft: #173d25;
+    --red: #f87171;
+    --red-soft: #3f1d1d;
   }
 }
 * { box-sizing: border-box; }
@@ -142,9 +145,38 @@ textarea {
 @keyframes spin { to { transform: rotate(360deg); } }
 .error { color: var(--red); }
 
-dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--text); padding: 18px; width: min(320px, 90vw); }
+dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--text); padding: 18px; width: min(420px, 92vw); max-height: 90vh; overflow: auto; }
 dialog::backdrop { background: rgba(0,0,0,.4); }
 dialog label { display: grid; gap: 6px; }
 dialog input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
 dialog menu { display: flex; gap: 8px; padding: 0; margin: 14px 0 0; }
 dialog menu button { flex: 1; padding: 10px; }
+
+/* balanço calórico e perfil */
+.balance { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; font-size: .92rem; }
+.balance b { font-size: 1.05rem; }
+.balance.deficit { background: var(--green-soft); color: var(--green); }
+.balance.surplus { background: var(--red-soft); color: var(--red); }
+.balance .ico { font-size: 1.2rem; }
+.balance small { display: block; color: var(--muted); font-size: .78rem; }
+.body-box { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.body-box .stat b { font-size: 1.05rem; }
+.body-box .stat span { display: block; }
+.setup { margin-top: 12px; }
+.setup button { width: 100%; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid .full { grid-column: 1 / -1; }
+dialog h2 { margin: 0 0 12px; }
+dialog label { font-size: .88rem; color: var(--muted); }
+dialog select { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 100%; }
+dialog input { width: 100%; }
+.profile-preview { margin-top: 14px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.profile-preview:empty { display: none; }
+
+.chart .bar.surplus, .chart .bar.over { fill: var(--red); }
+.chart .maint { stroke: var(--text); stroke-width: 1; opacity: .45; }
+.legend i.line { height: 0; border-top: 2px solid var(--text); opacity: .45; border-radius: 0; width: 14px; vertical-align: 3px; }
+.day-rows .v.surplus { color: var(--red); }
+.day-rows .v.deficit { color: var(--green); }
+.pos { color: var(--green); } .neg { color: var(--red); }
